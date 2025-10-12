@@ -4,6 +4,7 @@ experiments
 graspdata
 dataset
 thirdparty
+wandb
 
 # Caches
 __pycache__
