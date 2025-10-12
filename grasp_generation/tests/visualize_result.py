@@ -32,7 +32,7 @@ joint_names = [
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--object_code', type=str, default='sem-Xbox360-d0dff348985d4f8e65ca1b579a4b8d2')
+    parser.add_argument('--object_code', type=str, default='core-mug-8570d9a8d24cb0acbebd3c0c0c70fb03')
     parser.add_argument('--num', type=int, default=0)
     parser.add_argument('--result_path', type=str, default='../data/dataset')
     args = parser.parse_args()

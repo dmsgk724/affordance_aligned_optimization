@@ -34,7 +34,7 @@ cd CoACD
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+make main -j
 ```
 
 Other dependencies are simple python packages.

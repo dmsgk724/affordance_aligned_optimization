@@ -175,7 +175,7 @@ if __name__ == '__main__':
             sim.reset_simulator()
             offset = offset_
         for i in range(batch_size):
-            simulated[i] = np.array(sum(result[i * 6:(i + 1) * 6]) == 6)
+            simulated[i] = np.array(sum(result[i * 6:(i + 1) * 6]) == 1)
 
         estimated = E_pen_array < args.penetration_threshold
         valid = simulated * estimated

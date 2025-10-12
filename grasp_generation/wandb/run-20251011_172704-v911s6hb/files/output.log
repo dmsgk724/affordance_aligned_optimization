@@ -1,0 +1,43 @@
+Wandb initialized: project=affordance-aligned-grasping, run=s20349_grasp_0
+=== Affordance-Aligned Grasping Pipeline ===
+Object: s20349, Grasp Index: 0
+Initializing models...
+Models initialized successfully!
+Loading affordance data from: /home/dmsgk724/CVPR_2026/dataset/processed_dexgys3/s20349/xyzc.npy
+Point cloud shape: (10000, 16)
+Contact values range: 0.000 to 1.000
+Found 7048 contact points
+Representative normal: [ 0.99821008 -0.01857136 -0.05684832]
+Hand model initialized with pose and contact points!
+Intermediate visualizations will be saved to: visualizations
+=== Starting Annealing Optimization ===
+Steps: 1000
+Annealing Config: temp=18.0, decay=0.95
+Initial Total Energy: 139.305222
+Step  100: E_total=84.007057, E_fc=4.0038, E_dis=0.0743, E_bar=0.0000, temp=15.433, accept=1.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0100.png
+Step  200: E_total=42.916142, E_fc=6.2348, E_dis=0.0543, E_bar=0.0262, temp=13.232, accept=1.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0200.png
+Step  300: E_total=23.033875, E_fc=9.1142, E_dis=0.0229, E_bar=0.0000, temp=10.777, accept=1.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0300.png
+Step  400: E_total=34.055218, E_fc=2.7415, E_dis=0.0398, E_bar=0.0046, temp=9.240, accept=0.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0400.png
+Step  500: E_total=33.810120, E_fc=0.9035, E_dis=0.0867, E_bar=0.0361, temp=7.922, accept=1.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0500.png
+Step  600: E_total=31.375769, E_fc=2.6758, E_dis=0.0278, E_bar=0.0577, temp=6.453, accept=0.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0600.png
+Step  700: E_total=30.278854, E_fc=2.5436, E_dis=0.0262, E_bar=0.0000, temp=5.532, accept=1.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0700.png
+Step  800: E_total=19.478889, E_fc=1.8235, E_dis=0.0209, E_bar=0.1169, temp=4.743, accept=1.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0800.png
+Step  900: E_total=25.936428, E_fc=9.1423, E_dis=0.0369, E_bar=0.0419, temp=3.863, accept=0.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_0900.png
+Step 1000: E_total=17.950985, E_fc=4.4931, E_dis=0.0214, E_bar=0.1108, temp=3.312, accept=0.00
+Intermediate visualization saved: visualizations/s20349_grasp_0_step_1000.png
+
+=== Annealing Optimization Complete ===
+Final Total Energy: 17.950985
+Final Temperature: 3.312465
+
+=== Pipeline Complete ===
+Intermediate visualizations saved to: ./visualizations

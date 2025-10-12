@@ -234,10 +234,11 @@ if __name__ == '__main__':
     if args.batch_size_each > args.max_total_batch_size:
         raise ValueError(f'batch_size_each {args.batch_size_each} should be smaller than max_total_batch_size {args.max_total_batch_size}')
     
+    object_code_list = ['core-mug-8570d9a8d24cb0acbebd3c0c0c70fb03']
     print(f'n_objects: {len(object_code_list)}')
     
     # generate
-
+    
     random.seed(args.seed)
     random.shuffle(object_code_list)
     objects_each = args.max_total_batch_size // args.batch_size_each

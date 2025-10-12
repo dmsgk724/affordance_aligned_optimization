@@ -3,6 +3,7 @@ meshdata
 experiments
 graspdata
 dataset
+thirdparty
 
 # Caches
 __pycache__

@@ -1,0 +1,380 @@
+Wandb initialized: project=affordance-aligned-grasping, run=s20349_grasp_0
+=== Affordance-Aligned Grasping Pipeline ===
+Object: s20349, Grasp Index: 0
+Initializing models...
+Models initialized successfully!
+Loading affordance data from: /home/dmsgk724/CVPR_2026/dataset/processed_dexgys3/s20349/xyzc.npy
+Point cloud shape: (10000, 16)
+Contact values range: 0.000 to 1.000
+Found 7048 contact points
+Representative normal: [ 0.99821008 -0.01857136 -0.05684832]
+Hand model initialized with pose and contact points!
+Intermediate visualizations will be saved to: visualizations
+=== Starting Annealing Optimization ===
+Steps: 1000
+Annealing Config: temp=18.0, decay=0.95
+Initial Total Energy: 119.453423
+Step  100: E_total=40.895569, E_fc=3.9900, E_dis=0.0808, E_bar=0.0066, temp=15.433, accept=1.00
+Visualization failed at step 100:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+choreographer.browsers.chromium.ChromeNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 373, in to_image
+    img_bytes = kaleido.calc_fig_sync(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 171, in calc_fig_sync
+    return _sync_server.oneshot_async_run(calc_fig, args=args, kwargs=kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 131, in oneshot_async_run
+    raise res
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 122, in run
+    q.put(asyncio.run(func(*args, **kwargs)))
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 101, in calc_fig
+    async with Kaleido(**kopts) as k:
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/kaleido.py", line 155, in __init__
+    raise ChromeNotFoundError(
+choreographer.browsers.chromium.ChromeNotFoundError: Kaleido v1 and later requires Chrome to be installed. To install Chrome, use the CLI command `kaleido_get_chrome`, or from Python, use either `kaleido.get_chrome()` or `kaleido.get_chrome_sync()`.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 270, in save_intermediate_visualization
+    fig_opt.write_image(png_path)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/basedatatypes.py", line 3911, in write_image
+    return pio.write_image(self, *args, **kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 509, in write_image
+    img_data = to_image(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 391, in to_image
+    raise RuntimeError(PLOTLY_GET_CHROME_ERROR_MSG)
+RuntimeError:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+Continuing optimization...
+Step  200: E_total=40.988186, E_fc=1.7150, E_dis=0.1198, E_bar=0.0000, temp=13.232, accept=1.00
+Visualization failed at step 200:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+choreographer.browsers.chromium.ChromeNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 373, in to_image
+    img_bytes = kaleido.calc_fig_sync(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 171, in calc_fig_sync
+    return _sync_server.oneshot_async_run(calc_fig, args=args, kwargs=kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 131, in oneshot_async_run
+    raise res
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 122, in run
+    q.put(asyncio.run(func(*args, **kwargs)))
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 101, in calc_fig
+    async with Kaleido(**kopts) as k:
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/kaleido.py", line 155, in __init__
+    raise ChromeNotFoundError(
+choreographer.browsers.chromium.ChromeNotFoundError: Kaleido v1 and later requires Chrome to be installed. To install Chrome, use the CLI command `kaleido_get_chrome`, or from Python, use either `kaleido.get_chrome()` or `kaleido.get_chrome_sync()`.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 270, in save_intermediate_visualization
+    fig_opt.write_image(png_path)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/basedatatypes.py", line 3911, in write_image
+    return pio.write_image(self, *args, **kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 509, in write_image
+    img_data = to_image(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 391, in to_image
+    raise RuntimeError(PLOTLY_GET_CHROME_ERROR_MSG)
+RuntimeError:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+Continuing optimization...
+Step  300: E_total=37.845299, E_fc=0.1393, E_dis=0.0698, E_bar=0.0014, temp=10.777, accept=1.00
+Visualization failed at step 300:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+choreographer.browsers.chromium.ChromeNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 373, in to_image
+    img_bytes = kaleido.calc_fig_sync(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 171, in calc_fig_sync
+    return _sync_server.oneshot_async_run(calc_fig, args=args, kwargs=kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 131, in oneshot_async_run
+    raise res
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 122, in run
+    q.put(asyncio.run(func(*args, **kwargs)))
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 101, in calc_fig
+    async with Kaleido(**kopts) as k:
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/kaleido.py", line 155, in __init__
+    raise ChromeNotFoundError(
+choreographer.browsers.chromium.ChromeNotFoundError: Kaleido v1 and later requires Chrome to be installed. To install Chrome, use the CLI command `kaleido_get_chrome`, or from Python, use either `kaleido.get_chrome()` or `kaleido.get_chrome_sync()`.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 270, in save_intermediate_visualization
+    fig_opt.write_image(png_path)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/basedatatypes.py", line 3911, in write_image
+    return pio.write_image(self, *args, **kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 509, in write_image
+    img_data = to_image(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 391, in to_image
+    raise RuntimeError(PLOTLY_GET_CHROME_ERROR_MSG)
+RuntimeError:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+Continuing optimization...
+Step  400: E_total=16.069178, E_fc=1.9893, E_dis=0.0373, E_bar=0.0214, temp=9.240, accept=0.00
+Visualization failed at step 400:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+choreographer.browsers.chromium.ChromeNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 373, in to_image
+    img_bytes = kaleido.calc_fig_sync(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 171, in calc_fig_sync
+    return _sync_server.oneshot_async_run(calc_fig, args=args, kwargs=kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 131, in oneshot_async_run
+    raise res
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 122, in run
+    q.put(asyncio.run(func(*args, **kwargs)))
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 101, in calc_fig
+    async with Kaleido(**kopts) as k:
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/kaleido.py", line 155, in __init__
+    raise ChromeNotFoundError(
+choreographer.browsers.chromium.ChromeNotFoundError: Kaleido v1 and later requires Chrome to be installed. To install Chrome, use the CLI command `kaleido_get_chrome`, or from Python, use either `kaleido.get_chrome()` or `kaleido.get_chrome_sync()`.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 270, in save_intermediate_visualization
+    fig_opt.write_image(png_path)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/basedatatypes.py", line 3911, in write_image
+    return pio.write_image(self, *args, **kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 509, in write_image
+    img_data = to_image(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 391, in to_image
+    raise RuntimeError(PLOTLY_GET_CHROME_ERROR_MSG)
+RuntimeError:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+Continuing optimization...
+Step  500: E_total=27.289671, E_fc=3.2315, E_dis=0.0452, E_bar=0.0029, temp=7.922, accept=1.00
+Visualization failed at step 500:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+choreographer.browsers.chromium.ChromeNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 373, in to_image
+    img_bytes = kaleido.calc_fig_sync(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 171, in calc_fig_sync
+    return _sync_server.oneshot_async_run(calc_fig, args=args, kwargs=kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 131, in oneshot_async_run
+    raise res
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 122, in run
+    q.put(asyncio.run(func(*args, **kwargs)))
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 101, in calc_fig
+    async with Kaleido(**kopts) as k:
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/kaleido.py", line 155, in __init__
+    raise ChromeNotFoundError(
+choreographer.browsers.chromium.ChromeNotFoundError: Kaleido v1 and later requires Chrome to be installed. To install Chrome, use the CLI command `kaleido_get_chrome`, or from Python, use either `kaleido.get_chrome()` or `kaleido.get_chrome_sync()`.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 270, in save_intermediate_visualization
+    fig_opt.write_image(png_path)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/basedatatypes.py", line 3911, in write_image
+    return pio.write_image(self, *args, **kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 509, in write_image
+    img_data = to_image(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 391, in to_image
+    raise RuntimeError(PLOTLY_GET_CHROME_ERROR_MSG)
+RuntimeError:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+Continuing optimization...
+Step  600: E_total=31.553171, E_fc=1.4054, E_dis=0.0179, E_bar=0.0029, temp=6.453, accept=0.00
+Visualization failed at step 600:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+choreographer.browsers.chromium.ChromeNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 373, in to_image
+    img_bytes = kaleido.calc_fig_sync(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 171, in calc_fig_sync
+    return _sync_server.oneshot_async_run(calc_fig, args=args, kwargs=kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 131, in oneshot_async_run
+    raise res
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/_sync_server.py", line 122, in run
+    q.put(asyncio.run(func(*args, **kwargs)))
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/asyncio/base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/__init__.py", line 101, in calc_fig
+    async with Kaleido(**kopts) as k:
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/kaleido/kaleido.py", line 155, in __init__
+    raise ChromeNotFoundError(
+choreographer.browsers.chromium.ChromeNotFoundError: Kaleido v1 and later requires Chrome to be installed. To install Chrome, use the CLI command `kaleido_get_chrome`, or from Python, use either `kaleido.get_chrome()` or `kaleido.get_chrome_sync()`.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 270, in save_intermediate_visualization
+    fig_opt.write_image(png_path)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/basedatatypes.py", line 3911, in write_image
+    return pio.write_image(self, *args, **kwargs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 509, in write_image
+    img_data = to_image(
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/plotly/io/_kaleido.py", line 391, in to_image
+    raise RuntimeError(PLOTLY_GET_CHROME_ERROR_MSG)
+RuntimeError:
+
+Kaleido requires Google Chrome to be installed.
+
+Either download and install Chrome yourself following Google's instructions for your operating system,
+or install it from your terminal by running:
+
+    $ plotly_get_chrome
+
+
+Continuing optimization...
+
+
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 425, in <module>
+    print("Wandb run completed")
+  File "scripts/affordance_aligned_optimization.py", line 403, in main
+    # Initialize optimizer
+  File "scripts/affordance_aligned_optimization.py", line 310, in run_pipeline
+    viz_output_dir.mkdir(parents=True, exist_ok=True)
+  File "scripts/affordance_aligned_optimization.py", line 148, in optimize_grasp_annealing
+    self.hand_model, self.object_model, xyz, contact_vals, self.config
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/torch/_tensor.py", line 307, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/torch/autograd/__init__.py", line 154, in backward
+    Variable._execution_engine.run_backward(
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "scripts/affordance_aligned_optimization.py", line 425, in <module>
+    print("Wandb run completed")
+  File "scripts/affordance_aligned_optimization.py", line 403, in main
+    # Initialize optimizer
+  File "scripts/affordance_aligned_optimization.py", line 310, in run_pipeline
+    viz_output_dir.mkdir(parents=True, exist_ok=True)
+  File "scripts/affordance_aligned_optimization.py", line 148, in optimize_grasp_annealing
+    self.hand_model, self.object_model, xyz, contact_vals, self.config
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/torch/_tensor.py", line 307, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
+  File "/home/dmsgk724/anaconda3/envs/dexgys/lib/python3.8/site-packages/torch/autograd/__init__.py", line 154, in backward
+    Variable._execution_engine.run_backward(
+KeyboardInterrupt
