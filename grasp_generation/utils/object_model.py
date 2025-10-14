@@ -94,7 +94,7 @@ class ObjectModel:
         if affordance_data_path is not None:
             self._load_affordance_data(affordance_data_path, contact_threshold)
 
-    def _load_affordance_data(self, data_path, contact_threshold=0.5):
+    def _load_affordance_data(self, data_path, contact_threshold=0.5, distance_threshold=0.005):
         """
         Load point cloud and contact map from processed DexGYS dataset
         
@@ -104,6 +104,8 @@ class ObjectModel:
             path to .npy file containing point cloud and contact maps
         contact_threshold: float
             threshold for defining target/non-target masks
+        distance_threshold: float
+            distance threshold for mapping contact regions to surface points (default: 0.5cm)
         """
         print(f"Loading affordance data from: {data_path}")
         
@@ -111,21 +113,244 @@ class ObjectModel:
         xyz = point_cloud[:, :3]
         contact_maps = point_cloud[:, 3:8].T
         
-        # Generate target and non-target masks for each contact map
-        target_masks = contact_maps > contact_threshold  # (5, N)
-        non_target_masks = ~target_masks  # (5, N)
-        
-        # Print statistics for each contact map
-        for i in range(5):
-            n_target = np.sum(target_masks[i])
-            n_total = len(xyz)
-            print(f"Contact map {i}: {n_target}/{n_total} target points ({n_target/n_total:.2%})")
-        
-        # Convert to torch tensors and store as class attributes
+        # Store original affordance data
         self.affordance_xyz = torch.tensor(xyz, dtype=torch.float, device=self.device)
         self.affordance_contact_maps = torch.tensor(contact_maps, dtype=torch.float, device=self.device)
-        self.affordance_target_masks = torch.tensor(target_masks, dtype=torch.bool, device=self.device)
-        self.affordance_non_target_masks = torch.tensor(non_target_masks, dtype=torch.bool, device=self.device)
+        
+        # Generate affordance masks for surface points using distance-based mapping
+        print(f"Mapping affordance to surface points with distance threshold: {distance_threshold}")
+        
+        # Get surface points (first object)
+        surface_points = self.surface_points_tensor[0]  # (num_samples, 3)
+        n_surface = surface_points.shape[0]
+        
+        # Initialize masks for surface points
+        surface_target_masks = torch.zeros(5, n_surface, dtype=torch.bool, device=self.device)
+        
+        # Process each contact map
+        for i in range(5):
+            # Find contact points above threshold
+            target_mask = contact_maps[i] > contact_threshold
+            if np.any(target_mask):
+                target_points = torch.tensor(xyz[target_mask], dtype=torch.float, device=self.device)
+                
+                # Compute distances from surface points to target points
+                distances = torch.cdist(surface_points.unsqueeze(0), target_points.unsqueeze(0)).squeeze(0)
+                min_distances, _ = torch.min(distances, dim=1)
+                
+                # Mark surface points within distance threshold as targets
+                surface_target_masks[i] = min_distances < distance_threshold
+            
+            n_target = surface_target_masks[i].sum().item()
+            print(f"Contact map {i}: {n_target}/{n_surface} target surface points ({n_target/n_surface:.2%})")
+        
+        self.affordance_target_masks = surface_target_masks  # (5, num_samples)
+        self.affordance_non_target_masks = ~surface_target_masks  # (5, num_samples)
+        
+        # Visualize surface points and contact maps
+        # self._visualize_affordance_mapping(surface_points, ~surface_target_masks, data_path)
+    
+    def _visualize_affordance_mapping(self, surface_points, surface_target_masks, data_path):
+        """
+        Visualize surface points colored by contact maps
+        
+        Parameters
+        ----------
+        surface_points: torch.Tensor (num_samples, 3)
+            surface points coordinates
+        surface_target_masks: torch.Tensor (5, num_samples)  
+            target masks for each contact map
+        data_path: str
+            path to original data file for naming output
+        """
+        import os
+        
+        # Convert to numpy for visualization
+        surface_points_np = surface_points.detach().cpu().numpy()
+        
+        # Create output directory
+        base_name = os.path.splitext(os.path.basename(data_path))[0]
+        output_dir = os.path.join(os.path.dirname(data_path), f"{base_name}_visualization")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Color palette for different contact maps
+        colors = ['red', 'green', 'blue', 'orange', 'purple']
+        
+        # Create visualization for each contact map
+        for i in range(5):
+            target_mask_np = surface_target_masks[i].detach().cpu().numpy()
+            
+            # Create plotly figure
+            fig = go.Figure()
+            
+            # Add non-target points (gray)
+            non_target_indices = ~target_mask_np
+            if np.any(non_target_indices):
+                fig.add_trace(go.Scatter3d(
+                    x=surface_points_np[non_target_indices, 0],
+                    y=surface_points_np[non_target_indices, 1], 
+                    z=surface_points_np[non_target_indices, 2],
+                    mode='markers',
+                    marker=dict(color='lightgray', size=2),
+                    name=f'Non-target points',
+                    showlegend=True
+                ))
+            
+            # Add target points (colored)
+            if np.any(target_mask_np):
+                fig.add_trace(go.Scatter3d(
+                    x=surface_points_np[target_mask_np, 0],
+                    y=surface_points_np[target_mask_np, 1],
+                    z=surface_points_np[target_mask_np, 2],
+                    mode='markers',
+                    marker=dict(color=colors[i], size=4),
+                    name=f'Contact map {i} targets',
+                    showlegend=True
+                ))
+            
+            # Calculate bounds for better camera positioning
+            x_min, x_max = surface_points_np[:, 0].min(), surface_points_np[:, 0].max()
+            y_min, y_max = surface_points_np[:, 1].min(), surface_points_np[:, 1].max()
+            z_min, z_max = surface_points_np[:, 2].min(), surface_points_np[:, 2].max()
+            
+            # Calculate center and range
+            x_center, y_center, z_center = (x_min + x_max) / 2, (y_min + y_max) / 2, (z_min + z_max) / 2
+            max_range = max(x_max - x_min, y_max - y_min, z_max - z_min)
+            
+            # Set layout with optimized camera view
+            fig.update_layout(
+                title=f'Surface Points - Contact Map {i} (Target: {target_mask_np.sum()}/{len(target_mask_np)})',
+                scene=dict(
+                    xaxis=dict(
+                        title='X',
+                        range=[x_center - max_range*0.6, x_center + max_range*0.6],
+                        showgrid=True,
+                        gridwidth=1,
+                        gridcolor="LightGray"
+                    ),
+                    yaxis=dict(
+                        title='Y', 
+                        range=[y_center - max_range*0.6, y_center + max_range*0.6],
+                        showgrid=True,
+                        gridwidth=1,
+                        gridcolor="LightGray"
+                    ),
+                    zaxis=dict(
+                        title='Z',
+                        range=[z_center - max_range*0.6, z_center + max_range*0.6],
+                        showgrid=True,
+                        gridwidth=1,
+                        gridcolor="LightGray"
+                    ),
+                    aspectmode='cube',
+                    camera=dict(
+                        eye=dict(x=1.5, y=1.5, z=1.5),
+                        center=dict(x=0, y=0, z=0),
+                        up=dict(x=0, y=0, z=1)
+                    ),
+                    bgcolor='white'
+                ),
+                width=1000,
+                height=800,
+                margin=dict(l=0, r=0, t=50, b=0)
+            )
+            
+            # Save visualization as PNG
+            output_file = os.path.join(output_dir, f"contact_map_{i}.png")
+            try:
+                fig.write_image(output_file, width=1000, height=800)
+                print(f"Saved visualization: {output_file}")
+            except Exception as e:
+                print(f"Warning: Could not save PNG (missing kaleido?). Saving as HTML instead.")
+                output_file_html = os.path.join(output_dir, f"contact_map_{i}.html")
+                fig.write_html(output_file_html)
+                print(f"Saved HTML visualization: {output_file_html}")
+        
+        # Create combined visualization showing all contact maps
+        fig_combined = go.Figure()
+        
+        # Add surface points colored by contact map assignment
+        surface_colors = np.full(len(surface_points_np), -1, dtype=int)  # -1 for non-target
+        
+        for i in range(5):
+            target_mask_np = surface_target_masks[i].detach().cpu().numpy()
+            surface_colors[target_mask_np] = i
+        
+        # Add points for each color
+        for i in range(-1, 5):
+            if i == -1:
+                # Non-target points
+                mask = surface_colors == -1
+                color = 'lightgray'
+                name = 'Non-target'
+                size = 2
+            else:
+                # Target points for contact map i
+                mask = surface_colors == i
+                color = colors[i]
+                name = f'Contact map {i}'
+                size = 4
+            
+            if np.any(mask):
+                fig_combined.add_trace(go.Scatter3d(
+                    x=surface_points_np[mask, 0],
+                    y=surface_points_np[mask, 1],
+                    z=surface_points_np[mask, 2],
+                    mode='markers',
+                    marker=dict(color=color, size=size),
+                    name=name,
+                    showlegend=True
+                ))
+        
+        # Set layout for combined figure with optimized camera view
+        fig_combined.update_layout(
+            title='Surface Points - All Contact Maps Combined',
+            scene=dict(
+                xaxis=dict(
+                    title='X',
+                    range=[x_center - max_range*0.6, x_center + max_range*0.6],
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor="LightGray"
+                ),
+                yaxis=dict(
+                    title='Y', 
+                    range=[y_center - max_range*0.6, y_center + max_range*0.6],
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor="LightGray"
+                ),
+                zaxis=dict(
+                    title='Z',
+                    range=[z_center - max_range*0.6, z_center + max_range*0.6],
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor="LightGray"
+                ),
+                aspectmode='cube',
+                camera=dict(
+                    eye=dict(x=1.5, y=1.5, z=1.5),
+                    center=dict(x=0, y=0, z=0),
+                    up=dict(x=0, y=0, z=1)
+                ),
+                bgcolor='white'
+            ),
+            width=1200,
+            height=900,
+            margin=dict(l=0, r=0, t=50, b=0)
+        )
+        
+        # Save combined visualization as PNG
+        combined_output = os.path.join(output_dir, "all_contact_maps.png")
+        try:
+            fig_combined.write_image(combined_output, width=1200, height=900)
+            print(f"Saved combined visualization: {combined_output}")
+        except Exception as e:
+            print(f"Warning: Could not save PNG (missing kaleido?). Saving as HTML instead.")
+            combined_output_html = os.path.join(output_dir, "all_contact_maps.html")
+            fig_combined.write_html(combined_output_html)
+            print(f"Saved HTML visualization: {combined_output_html}")
+            
 
     def cal_distance(self, x, with_closest_points=False):
         """

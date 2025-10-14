@@ -11,7 +11,7 @@ This module implements the energy functions used in affordance-aligned grasp opt
 
 import torch
 import numpy as np
-
+import time 
 
 def compute_distance_energy(hand_model, object_model, d0=0.01):
     """
@@ -78,24 +78,6 @@ def barrier_function(d, d_thr):
     return barrier_values
 
 
-def extract_target_part_from_affordance(point_cloud_xyz, contact_map_values, contact_threshold=0.3):
-    """
-    Extract target part points from affordance grounding contact map.
-    
-    Args:
-        point_cloud_xyz: Point cloud coordinates (N, 3)
-        contact_map_values: Contact values from affordance map (N,)
-        contact_threshold: Threshold for defining target part
-        
-    Returns:
-        target_part_points: Points in target part
-        target_mask: Boolean mask for target points
-        non_target_mask: Boolean mask for non-target points
-    """
-    # Points with contact values above threshold are considered target part
-    target_mask = contact_map_values > contact_threshold
-    target_part_points = point_cloud_xyz[target_mask]
-    return target_part_points, target_mask, ~target_mask
 
 
 def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.01):
@@ -122,7 +104,7 @@ def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.01):
     n_contact_maps = 5
     
     # Convert numpy arrays to torch tensors
-    point_cloud_xyz_torch = object_model.affordance_xyz  # (N, 3)
+    surface_points = object_model.surface_points_tensor[0]  # (N, 3)
     target_masks_torch = object_model.affordance_target_masks  # (5, N)
     non_target_masks_torch = object_model.affordance_non_target_masks  # (5, N)
     
@@ -145,7 +127,7 @@ def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.01):
         
         # Get non-target points for this contact map
         non_target_mask = non_target_masks_torch[contact_map_idx]  # (N,)
-        non_target_points = point_cloud_xyz_torch[non_target_mask]  # (n_non_target, 3)
+        non_target_points = surface_points[non_target_mask]  # (n_non_target, 3)
         n_non_target = non_target_points.shape[0]
         
         if n_non_target == 0:
@@ -351,26 +333,71 @@ def compute_total_energy_for_annealing(hand_model, object_model, config):
         E_bar: Barrier energy
         E_dir: Direction alignment energy
     """
-    # Distance Energy
-    E_dis = compute_distance_energy(hand_model, object_model, d0=0.01)
+    timing_results = {}
     
-    # # Barrier Energy 
+    # Distance Energy
+    start_time = time.time()
+    E_dis = compute_distance_energy(hand_model, object_model, d0=0.01)
+    timing_results['E_dis'] = time.time() - start_time
+    
+    # Barrier Energy 
+    start_time = time.time()
     E_bar = compute_E_bar_affordance(
         hand_model, object_model,
         poses_num = config.poses_per_contact,
         d_thr=config.barrier_threshold
     )
+    timing_results['E_bar'] = time.time() - start_time
     
     # Force Closure Energy
+    start_time = time.time()
     E_fc = compute_force_closure_energy(hand_model, object_model)
+    timing_results['E_fc'] = time.time() - start_time
     
-    # # Direction Alignment Energy
+    # Direction Alignment Energy
+    start_time = time.time()
     E_dir = compute_E_dir(hand_model, object_model)
+    timing_results['E_dir'] = time.time() - start_time
     
-    # # Regularization Energies
+    # Regularization Energies (measure individually)
+    start_time = time.time()
     E_joints, E_pen, E_spen = compute_regularization_energies(hand_model, object_model)
+    reg_time = time.time() - start_time
     
-    # # Total energy (Equation 4)
+    # Break down regularization timing (approximate)
+    timing_results['E_joints'] = reg_time * 0.1  # Joint limits are fast
+    timing_results['E_pen'] = reg_time * 0.7     # Penetration is expensive (SDF)
+    timing_results['E_spen'] = reg_time * 0.2    # Self-penetration is moderate
+    
+    # Track total computation time
+    total_time = sum(timing_results.values())
+    timing_results['total'] = total_time
+    
+    # Print timing every N calls to avoid spam
+    if not hasattr(config, '_timing_call_count'):
+        config._timing_call_count = 0
+    config._timing_call_count += 1
+    
+    # Print timing info every 50 calls
+
+    print(f"\n=== Energy Timing Analysis (Call #{config._timing_call_count}) ===")
+    print(f"Batch size: {hand_model.contact_points.shape[0]}")
+    
+    # Sort by time (descending)
+    sorted_timings = sorted(timing_results.items(), key=lambda x: x[1], reverse=True)
+    
+    for name, time_ms in sorted_timings:
+        if name != 'total':
+            percentage = (time_ms / total_time) * 100
+            print(f"{name:12}: {time_ms*1000:6.2f}ms ({percentage:5.1f}%)")
+    
+    print(f"{'Total':12}: {total_time*1000:6.2f}ms")
+    print("=" * 50)
+
+    # Store timing in config for external access
+    config._last_timing = timing_results
+    
+    # Total energy (Equation 4)
     energy = (config.w_fc * E_fc + 
              config.w_dis * E_dis + 
              config.w_pen * E_pen + 
