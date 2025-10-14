@@ -98,7 +98,7 @@ def extract_target_part_from_affordance(point_cloud_xyz, contact_map_values, con
     return target_part_points, target_mask, ~target_mask
 
 
-def compute_E_bar_affordance(hand_model, object_model, point_cloud_xyz, target_masks, non_target_masks, poses_num, d_thr=0.01):
+def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.01):
     """
     Compute part-contact energy E_bar using affordance grounding contact map.
     
@@ -122,9 +122,9 @@ def compute_E_bar_affordance(hand_model, object_model, point_cloud_xyz, target_m
     n_contact_maps = 5
     
     # Convert numpy arrays to torch tensors
-    point_cloud_xyz_torch = torch.tensor(point_cloud_xyz, dtype=torch.float, device=device)  # (N, 3)
-    target_masks_torch = torch.tensor(target_masks, dtype=torch.bool, device=device)  # (5, N)
-    non_target_masks_torch = torch.tensor(non_target_masks, dtype=torch.bool, device=device)  # (5, N)
+    point_cloud_xyz_torch = object_model.affordance_xyz  # (N, 3)
+    target_masks_torch = object_model.affordance_target_masks  # (5, N)
+    non_target_masks_torch = object_model.affordance_non_target_masks  # (5, N)
     
     # Get fingertip positions (using contact points as proxy for fingertips)
     fingertips = hand_model.contact_points  # (batch_size, n_contact, 3)
@@ -171,16 +171,7 @@ def compute_E_bar_affordance(hand_model, object_model, point_cloud_xyz, target_m
         E_bar_total[start_idx:end_idx] = barrier_per_batch
     
     # Prepare target part information (using first contact map as representative)
-    first_target_mask = target_masks[0]
-    target_part_info = {
-        'n_target_points': int(np.sum(first_target_mask)),
-        'n_total_points': len(point_cloud_xyz),
-        'target_ratio': float(np.sum(first_target_mask)) / len(point_cloud_xyz),
-        'poses_per_contact_map': poses_num,
-        'n_contact_maps': n_contact_maps
-    }
-    
-    return E_bar_total, target_part_info
+    return E_bar_total
 
 
 def compute_force_closure_energy(hand_model, object_model):
@@ -339,7 +330,7 @@ def compute_regularization_energies(hand_model, object_model):
     return E_joints, E_pen, E_spen
 
 
-def compute_total_energy_for_annealing(hand_model, object_model, xyz, contact_vals, target_masks, non_target_masks, config):
+def compute_total_energy_for_annealing(hand_model, object_model, config):
     """
     Compute total energy function for annealing optimization
     
@@ -364,8 +355,8 @@ def compute_total_energy_for_annealing(hand_model, object_model, xyz, contact_va
     E_dis = compute_distance_energy(hand_model, object_model, d0=0.01)
     
     # # Barrier Energy 
-    E_bar, _ = compute_E_bar_affordance(
-        hand_model, object_model, xyz, target_masks, non_target_masks,
+    E_bar = compute_E_bar_affordance(
+        hand_model, object_model,
         poses_num = config.poses_per_contact,
         d_thr=config.barrier_threshold
     )

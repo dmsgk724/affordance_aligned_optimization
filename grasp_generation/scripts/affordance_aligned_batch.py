@@ -26,7 +26,7 @@ except RuntimeError:
 from utils.hand_model import HandModel
 from utils.object_model import ObjectModel
 from utils.optimizer import Annealing
-from utils.initialization import extract_contact_normal, initialize_hand_with_contact_normal, load_affordance_data
+from utils.initialization import extract_contact_normal, initialize_hand_with_contact_normal
 from utils.affordance_energy import compute_total_energy_for_annealing
 
 
@@ -110,19 +110,17 @@ def generate(args_list):
             num_samples=2000,
             device=device
         )
-        object_model.initialize([object_code])
         
-        # Load affordance data
         data_path = args.data_path.format(object_code=object_code)
         if not os.path.exists(data_path):
             print(f"Warning: Affordance data not found for {object_code}: {data_path}")
             return
             
-        xyz, contact_vals, target_masks, non_target_masks = load_affordance_data(data_path)
+        object_model.initialize([object_code], affordance_data_path=data_path, contact_threshold=config.contact_threshold)
         
         # Extract contact normal
         closest_point, contact_normal, closest_idx = extract_contact_normal(
-            xyz, contact_vals, config.contact_threshold
+            object_model, config.contact_threshold
         )
         
         # Initialize hand with contact normal
@@ -149,7 +147,7 @@ def generate(args_list):
         # # Initial energy computation
         # compute_total_energy_for_annealing(hand_model, object_model, xyz, contact_vals, target_masks, non_target_masks, config)
         energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar, E_dir = compute_total_energy_for_annealing(
-            hand_model, object_model, xyz, contact_vals, target_masks, non_target_masks, config
+            hand_model, object_model, config
         )
         
         energy.sum().backward(retain_graph=True)
@@ -164,7 +162,7 @@ def generate(args_list):
             optimizer.zero_grad()
             
             new_energy, new_E_fc, new_E_dis, new_E_pen, new_E_spen, new_E_joints, new_E_bar, new_E_dir = compute_total_energy_for_annealing(
-                hand_model, object_model, xyz, contact_vals, target_masks, non_target_masks, config
+                hand_model, object_model, config
             )
             
             new_energy.sum().backward(retain_graph=True)
@@ -214,8 +212,6 @@ def generate(args_list):
             'E_dir': E_dir[0].item(),
             'closest_point': closest_point,
             'contact_normal': contact_normal,
-            'xyz': xyz,
-            'contact_vals': contact_vals
         }
         
         # # Save to file

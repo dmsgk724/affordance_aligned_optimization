@@ -15,13 +15,12 @@ from utils.hand_model import HandModel
 from utils.object_model import ObjectModel
 
 
-def extract_contact_normal(xyz, contact_vals, contact_threshold=0.5):
+def extract_contact_normal(object_model, contact_threshold=0.5):
     """
     Extract representative contact point and normal from affordance data
     
     Args:
-        xyz: Point cloud coordinates (N, 3)
-        contact_vals: Contact values from affordance map (5, N)
+        object_model: ObjectModel instance containing affordance data
         contact_threshold: Threshold for contact points
         
     Returns:
@@ -29,6 +28,10 @@ def extract_contact_normal(xyz, contact_vals, contact_threshold=0.5):
         representative_normals: Contact normal vectors (5, 3)
         closest_indices: Indices of closest points (5,)
     """
+    # Extract data from object_model
+    xyz = object_model.affordance_xyz.detach().cpu().numpy()
+    contact_vals = object_model.affordance_contact_maps.detach().cpu().numpy()
+    
     # Compute point cloud normals once
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(xyz)
@@ -205,37 +208,3 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
     print(f"Total grasp poses initialized: {total_batch_size}")
     print(f"===================================")
     print("Hand model initialized with pose and contact points!")
-
-
-def load_affordance_data(data_path, contact_threshold=0.5):
-    """
-    Load point cloud and contact map from processed DexGYS dataset
-    
-    Args:
-        data_path: Path to .npy file containing point cloud and contact maps
-        contact_threshold: Threshold for defining target/non-target masks
-        
-    Returns:
-        xyz: Point cloud coordinates (N, 3)
-        contact_vals: Contact values for selected grasp (5, N)
-        target_masks: Target masks for each contact map (5, N)
-        non_target_masks: Non-target masks for each contact map (5, N)
-    """
-    print(f"Loading affordance data from: {data_path}")
-    
-    point_cloud = np.load(data_path)
-    xyz = point_cloud[:, :3]
-    contact_maps = point_cloud[:, 3:8].T
-    
-    # Generate target and non-target masks for each contact map
-    target_masks = contact_maps > contact_threshold  # (5, N)
-    non_target_masks = ~target_masks  # (5, N)
-    
-    # Print statistics for each contact map
-    for i in range(5):
-        n_target = np.sum(target_masks[i])
-        n_total = len(xyz)
-        print(f"Contact map {i}: {n_target}/{n_total} target points ({n_target/n_total:.2%})")
-    
-    return xyz, contact_maps, target_masks, non_target_masks
-

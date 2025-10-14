@@ -42,18 +42,28 @@ class ObjectModel:
         self.object_scale_tensor = None
         self.object_mesh_list = None
         self.object_face_verts_list = None
+        
+        # Affordance data attributes
+        self.affordance_xyz = None
+        self.affordance_contact_maps = None
+        self.affordance_target_masks = None
+        self.affordance_non_target_masks = None
         # self.scale_choice = torch.tensor([0.06, 0.08, 0.1, 0.12, 0.15], dtype=torch.float, device=self.device)
         self.scale_choice = torch.tensor([1],dtype=torch.float, device=self.device )
-    def initialize(self, object_code_list):
+    def initialize(self, object_code_list, affordance_data_path=None, contact_threshold=0.5):
         """
         Initialize Object Model with list of objects
         
-        Choose scales, load meshes, sample surface points
+        Choose scales, load meshes, sample surface points, and optionally load affordance data
         
         Parameters
         ----------
         object_code_list: list | str
             list of object codes
+        affordance_data_path: str, optional
+            path to .npy file containing point cloud and contact maps
+        contact_threshold: float, optional
+            threshold for defining target/non-target masks (default: 0.5)
         """
         if not isinstance(object_code_list, list):
             object_code_list = [object_code_list]
@@ -79,6 +89,43 @@ class ObjectModel:
         self.object_scale_tensor = torch.stack(self.object_scale_tensor, dim=0)
         if self.num_samples != 0:
             self.surface_points_tensor = torch.stack(self.surface_points_tensor, dim=0).repeat_interleave(self.batch_size_each, dim=0)  # (n_objects * batch_size_each, num_samples, 3)
+        
+        # Load affordance data if provided
+        if affordance_data_path is not None:
+            self._load_affordance_data(affordance_data_path, contact_threshold)
+
+    def _load_affordance_data(self, data_path, contact_threshold=0.5):
+        """
+        Load point cloud and contact map from processed DexGYS dataset
+        
+        Parameters
+        ----------
+        data_path: str
+            path to .npy file containing point cloud and contact maps
+        contact_threshold: float
+            threshold for defining target/non-target masks
+        """
+        print(f"Loading affordance data from: {data_path}")
+        
+        point_cloud = np.load(data_path)
+        xyz = point_cloud[:, :3]
+        contact_maps = point_cloud[:, 3:8].T
+        
+        # Generate target and non-target masks for each contact map
+        target_masks = contact_maps > contact_threshold  # (5, N)
+        non_target_masks = ~target_masks  # (5, N)
+        
+        # Print statistics for each contact map
+        for i in range(5):
+            n_target = np.sum(target_masks[i])
+            n_total = len(xyz)
+            print(f"Contact map {i}: {n_target}/{n_total} target points ({n_target/n_total:.2%})")
+        
+        # Convert to torch tensors and store as class attributes
+        self.affordance_xyz = torch.tensor(xyz, dtype=torch.float, device=self.device)
+        self.affordance_contact_maps = torch.tensor(contact_maps, dtype=torch.float, device=self.device)
+        self.affordance_target_masks = torch.tensor(target_masks, dtype=torch.bool, device=self.device)
+        self.affordance_non_target_masks = torch.tensor(non_target_masks, dtype=torch.bool, device=self.device)
 
     def cal_distance(self, x, with_closest_points=False):
         """
