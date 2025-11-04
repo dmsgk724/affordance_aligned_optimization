@@ -91,8 +91,8 @@ def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.005):
         hand_model: HandModel instance
         object_model: ObjectModel instance
         point_cloud_xyz: Point cloud coordinates (N, 3)
-        target_masks: Target masks for each contact map (5, N)
-        non_target_masks: Non-target masks for each contact map (5, N)
+        target_masks: Target masks for each contact map (C, N)
+        non_target_masks: Non-target masks for each contact map (C, N)
         d_thr: Barrier threshold distance
         
     Returns:
@@ -101,21 +101,18 @@ def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.005):
     """
     batch_size = hand_model.contact_points.shape[0]
     device = hand_model.device
-    n_contact_maps = 5
     
-    # Convert numpy arrays to torch tensors
     surface_points = object_model.surface_points_tensor[0]  # (N, 3)
-    target_masks_torch = object_model.affordance_target_masks  # (5, N)
-    non_target_masks_torch = object_model.affordance_non_target_masks  # (5, N)
-    
+    target_masks_torch = object_model.affordance_target_masks  # (C, N)
+    non_target_masks_torch = object_model.affordance_non_target_masks  # (C, N)
+    n_contact_maps = target_masks_torch.shape[0]
+
     # Get fingertip positions (using contact points as proxy for fingertips)
     fingertips = hand_model.contact_points  # (batch_size, n_contact, 3)
     n_fingertips = fingertips.shape[1]
     
     # Initialize E_bar tensor
     E_bar_total = torch.zeros(batch_size, device=device)
-    
-    # Process each group of 5000 poses with different contact maps
     for contact_map_idx in range(n_contact_maps):
         start_idx = contact_map_idx * poses_num
         end_idx = min(start_idx + poses_num, batch_size)
@@ -129,27 +126,12 @@ def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.005):
         non_target_mask = non_target_masks_torch[contact_map_idx]  # (N,)
         non_target_points = surface_points[non_target_mask]  # (n_non_target, 3)
         n_non_target = non_target_points.shape[0]
-        
-        if n_non_target == 0:
-            continue
-            
-        # Get fingertips for current batch slice
         current_fingertips = fingertips[start_idx:end_idx]  # (current_batch_size, n_contact, 3)
-        
-        # Reshape for batch distance computation
         fingertips_reshaped = current_fingertips.reshape(-1, 3)  # (current_batch_size * n_contact, 3)
-        
-        # Compute distances from all fingertips to all non-target points
         distances = torch.cdist(fingertips_reshaped.unsqueeze(0), non_target_points.unsqueeze(0)).squeeze(0)  # (current_batch_size * n_contact, n_non_target)
-        
-        # Apply barrier function to encourage distance from non-target points
         barrier_values = barrier_function(distances, d_thr)  # (current_batch_size * n_contact, n_non_target)
-        
-        # Sum over non-target points and fingertips for each batch element
         barrier_per_fingertip = barrier_values.sum(dim=1)  # (current_batch_size * n_contact,)
         barrier_per_batch = barrier_per_fingertip.reshape(current_batch_size, n_fingertips).sum(dim=1)  # (current_batch_size,)
-        
-        # Assign to corresponding batch indices
         E_bar_total[start_idx:end_idx] = barrier_per_batch
     
     # Prepare target part information (using first contact map as representative)

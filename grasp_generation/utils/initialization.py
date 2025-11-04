@@ -21,9 +21,9 @@ def extract_contact_normal(object_model, contact_threshold=0.5):
         contact_threshold: Threshold for contact points
         
     Returns:
-        closest_points: Representative contact points (5, 3)
-        representative_normals: Contact normal vectors (5, 3)
-        closest_indices: Indices of closest points (5,)
+        closest_points: Representative contact points (C, 3)
+        representative_normals: Contact normal vectors (C, 3)
+        closest_indices: Indices of closest points (C,)
     """
     # Extract data from object_model
     xyz = object_model.affordance_xyz.detach().cpu().numpy()
@@ -38,12 +38,13 @@ def extract_contact_normal(object_model, contact_threshold=0.5):
     normals = np.asarray(pcd.normals)
     center = xyz.mean(axis=0)
     
-    closest_points = np.zeros((5, 3))
-    representative_normals = np.zeros((5, 3))
-    closest_indices = np.zeros(5, dtype=int)
+    n_contact = contact_vals.shape[0]
+    closest_points = np.zeros((n_contact, 3))
+    representative_normals = np.zeros((n_contact, 3))
+    closest_indices = np.zeros(n_contact, dtype=int)
     
-    # Process each of the 5 contact maps
-    for i in range(5):
+    # Process each of the C contact maps
+    for i in range(n_contact):
         contact_vals_i = contact_vals[i]
         contact_mask = contact_vals_i > contact_threshold
         
@@ -72,13 +73,13 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
     Args:
         hand_model: HandModel instance
         object_model: ObjectModel instance  
-        closest_points: Representative contact points (5, 3)
-        contact_normals: Contact normal vectors (5, 3)
+        closest_points: Representative contact points (C, 3)
+        contact_normals: Contact normal vectors (C, 3)
         config: Configuration object with initialization parameters
     """
     device = hand_model.device
     n_objects = len(object_model.object_mesh_list)
-    n_contact_normals = 5
+    n_contact_normals = closest_points.shape[0]
     total_batch_size = n_objects * n_contact_normals * config.poses_per_contact
 
     closest_points_torch = torch.tensor(closest_points, dtype=torch.float, device=device)
@@ -98,7 +99,7 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
         vertices += 0.2 * vertices / np.linalg.norm(vertices, axis=1, keepdims=True)
         mesh = tm.Trimesh(vertices=vertices, faces=faces).convex_hull
         
-        # Process each of the 5 contact normals
+        # Process each of the C contact normals
         for normal_idx in range(n_contact_normals):
             closest_point_torch = closest_points_torch[normal_idx]
             contact_normal_torch = contact_normals_torch[normal_idx]

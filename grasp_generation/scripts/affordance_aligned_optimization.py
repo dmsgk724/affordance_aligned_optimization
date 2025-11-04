@@ -41,7 +41,7 @@ class AffordanceGraspConfig:
         self.jitter_strength = 0.1
         self.n_contact = 4
         
-        # Energy weights (following generate_grasps.py)
+        # Energy weights 
         self.w_dis = 100.0   # Original distance weight
         self.w_pen = 100.0      # Penetration weight  
         self.w_spen = 10.0      # Self-penetration weight
@@ -77,7 +77,6 @@ class AffordanceAlignedOptimizer:
         
     def initialize_models(self, object_code, data_root_path, data_path):
         """Initialize hand and object models"""
-        print("Initializing models...")
         
         # Initialize hand model
         self.hand_model = HandModel(
@@ -88,10 +87,9 @@ class AffordanceAlignedOptimizer:
             device=self.device
         )
         
-        # Initialize object model with batch_size=1 for single optimization
+        # Initialize object model
         self.object_model = ObjectModel(
             data_root_path=data_root_path,
-            batch_size_each=5,
             num_samples=2000,
             device=self.device
         )
@@ -122,8 +120,6 @@ class AffordanceAlignedOptimizer:
         
         print(f"=== Starting Annealing Optimization ===")
         print(f"Steps: {num_steps}")
-        print(f"Annealing Config: temp={self.config.starting_temperature}, decay={self.config.temperature_decay}")
-        
         # Initial energy computation
         energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar = compute_total_energy_for_annealing(
             self.hand_model, self.object_model, self.config
@@ -151,7 +147,6 @@ class AffordanceAlignedOptimizer:
             # Accept/reject step
             with torch.no_grad():
                 accept, temperature = optimizer.accept_step(energy, new_energy)
-                
                 # Update energies for accepted steps
                 energy[accept] = new_energy[accept]
                 E_fc[accept] = new_E_fc[accept]
@@ -207,11 +202,9 @@ class AffordanceAlignedOptimizer:
             # Get hand and object plotly data
             hand_plotly_opt = self.hand_model.get_plotly_data(i=0, opacity=0.7, color='lightblue', with_contact_points=True)
             object_plotly_opt = self.object_model.get_plotly_data(i=0, color='lightgreen', opacity=0.6)
-            
+
             # Create figure with hand and object data
             fig_opt = go.Figure(hand_plotly_opt + object_plotly_opt)
-            
-            # Add contact points from affordance map (get from object model)
             if hasattr(self.object_model, 'surface_points_tensor') and hasattr(self.object_model, 'affordance_target_masks'):
                 surface_points = self.object_model.surface_points_tensor[0].cpu().numpy()
                 target_mask = self.object_model.affordance_target_masks[0].cpu().numpy()
@@ -229,7 +222,6 @@ class AffordanceAlignedOptimizer:
             # Add closest point and normal
             representative_normal = contact_normal
             normal_end = closest_point + representative_normal * 0.05
-            
             fig_opt.add_trace(go.Scatter3d(
                 x=[closest_point[0]],
                 y=[closest_point[1]],
@@ -347,10 +339,7 @@ def main():
     
     args = parser.parse_args()
     
-    # Format data path with object code
     data_path = args.data_path.format(object_code=args.object_code)
-
-
     use_wandb = not args.no_wandb
     if not args.no_wandb:
         run_name = args.wandb_run_name or f"{args.object_code}_grasp_{args.grasp_idx}"

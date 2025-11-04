@@ -17,7 +17,7 @@ from torchsdf import index_vertices_by_faces, compute_sdf
 
 class ObjectModel:
 
-    def __init__(self, data_root_path, batch_size_each, num_samples=2000, device="cuda"):
+    def __init__(self, data_root_path, num_samples=2000, device="cuda"):
         """
         Create a Object Model
         
@@ -34,7 +34,6 @@ class ObjectModel:
         """
 
         self.device = device
-        self.batch_size_each = batch_size_each
         self.data_root_path = data_root_path
         self.num_samples = num_samples
 
@@ -48,7 +47,7 @@ class ObjectModel:
         self.affordance_contact_maps = None
         self.affordance_target_masks = None
         self.affordance_non_target_masks = None
-        # self.scale_choice = torch.tensor([0.06, 0.08, 0.1, 0.12, 0.15], dtype=torch.float, device=self.device)
+
         self.scale_choice = torch.tensor([1],dtype=torch.float, device=self.device )
     def initialize(self, object_code_list, affordance_data_path=None, contact_threshold=0.5):
         """
@@ -71,7 +70,14 @@ class ObjectModel:
         self.object_scale_tensor = []
         self.object_mesh_list = []
         self.object_face_verts_list = []
+        self.point_cloud = np.load(affordance_data_path) 
+        self.xyz = self.point_cloud [:, :3]
+        self.contact_maps = self.point_cloud[:, 3:].T
+        self.batch_size_each = self.contact_maps.shape[0]
+        self.n_contact = self.batch_size_each
         self.surface_points_tensor = []
+
+    
         for object_code in object_code_list:
             self.object_scale_tensor.append(self.scale_choice[torch.randint(0, self.scale_choice.shape[0], (self.batch_size_each, ), device=self.device)])
             self.object_mesh_list.append(tm.load(os.path.join(self.data_root_path, object_code, "coacd", "decomposed.obj"), force="mesh", process=False))
@@ -89,7 +95,7 @@ class ObjectModel:
         self.object_scale_tensor = torch.stack(self.object_scale_tensor, dim=0)
         if self.num_samples != 0:
             self.surface_points_tensor = torch.stack(self.surface_points_tensor, dim=0).repeat_interleave(self.batch_size_each, dim=0)  # (n_objects * batch_size_each, num_samples, 3)
-        
+
         # Load affordance data if provided
         if affordance_data_path is not None:
             self._load_affordance_data(affordance_data_path, contact_threshold)
@@ -108,30 +114,24 @@ class ObjectModel:
         """
         print(f"Loading affordance data from: {data_path}")
         
-        point_cloud = np.load(data_path)
-        xyz = point_cloud[:, :3]
-        contact_maps = point_cloud[:, 3:8].T
         
         # Store original affordance data
-        self.affordance_xyz = torch.tensor(xyz, dtype=torch.float, device=self.device)
-        self.affordance_contact_maps = torch.tensor(contact_maps, dtype=torch.float, device=self.device)
+        self.affordance_xyz = torch.tensor(self.xyz, dtype=torch.float, device=self.device)
+        self.affordance_contact_maps = torch.tensor(self.contact_maps, dtype=torch.float, device=self.device)
         
-        # Generate affordance masks for surface points using distance-based mapping
-        print(f"Mapping affordance to surface points with distance threshold: {distance_threshold}")
-        
-        # Get surface points (first object)
-        surface_points = self.surface_points_tensor[0]  # (num_samples, 3)
+        # Generate affordance masks for points using distance-based mapping
+        surface_points = self.surface_points_tensor[0]  
         n_surface = surface_points.shape[0]
         
         # Initialize masks for surface points
-        surface_target_masks = torch.zeros(5, n_surface, dtype=torch.bool, device=self.device)
+        surface_target_masks = torch.zeros(self.n_contact, n_surface, dtype=torch.bool, device=self.device)
         
         # Process each contact map
-        for i in range(5):
+        for i in range(self.n_contact):
             # Find contact points above threshold
-            target_mask = contact_maps[i] > contact_threshold
+            target_mask = self.contact_maps[i] > contact_threshold
             if np.any(target_mask):
-                target_points = torch.tensor(xyz[target_mask], dtype=torch.float, device=self.device)
+                target_points = torch.tensor(self.xyz[target_mask], dtype=torch.float, device=self.device)
                 
                 # Compute distances from surface points to target points
                 distances = torch.cdist(surface_points.unsqueeze(0), target_points.unsqueeze(0)).squeeze(0)
