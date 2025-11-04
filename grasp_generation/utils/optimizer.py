@@ -85,7 +85,6 @@ class Annealing:
         self.old_contact_points = self.hand_model.contact_points
         self.old_grad_hand_pose = self.hand_model.hand_pose.grad
         self.hand_model.set_parameters(hand_pose, contact_point_indices)
-
         self.step += 1
 
         return s

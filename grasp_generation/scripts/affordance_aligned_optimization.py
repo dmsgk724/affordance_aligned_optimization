@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
 """
 Affordance-Aligned Grasping Optimization Script
 
 This script implements the optimization pipeline from affordance_aligned_grasping.ipynb
-with new energy functions for distance, barrier, and direction alignment.
-
+with new energy functions for distance, barrier.
 Usage:
     python affordance_aligned_optimization.py --object_code s20349 --grasp_idx 0
 """
@@ -75,7 +73,7 @@ class AffordanceAlignedOptimizer:
         self.object_model = None
         self.use_wandb = use_wandb
         
-    def initialize_models(self, object_code, data_root_path, data_path):
+    def initialize_models(self, object_code, data_root_path, data_path, grasp_idx):
         """Initialize hand and object models"""
         
         # Initialize hand model
@@ -95,7 +93,7 @@ class AffordanceAlignedOptimizer:
         )
             
         # Initialize with affordance data
-        self.object_model.initialize([object_code], affordance_data_path=data_path, contact_threshold=self.config.contact_threshold)
+        self.object_model.initialize([object_code], grasp_idx, affordance_data_path=data_path, contact_threshold=self.config.contact_threshold)
         print("Models initialized successfully")
         
     def optimize_grasp_annealing(self, num_steps=6000, verbose_step=100, output_dir=None, object_code=None, grasp_idx=None, closest_point=None, contact_normal=None, closest_idx=None):
@@ -202,54 +200,20 @@ class AffordanceAlignedOptimizer:
             # Get hand and object plotly data
             hand_plotly_opt = self.hand_model.get_plotly_data(i=0, opacity=0.7, color='lightblue', with_contact_points=True)
             object_plotly_opt = self.object_model.get_plotly_data(i=0, color='lightgreen', opacity=0.6)
-
             # Create figure with hand and object data
             fig_opt = go.Figure(hand_plotly_opt + object_plotly_opt)
-            if hasattr(self.object_model, 'surface_points_tensor') and hasattr(self.object_model, 'affordance_target_masks'):
-                surface_points = self.object_model.surface_points_tensor[0].cpu().numpy()
-                target_mask = self.object_model.affordance_target_masks[0].cpu().numpy()
-                if np.any(target_mask):
-                    contact_points = surface_points[target_mask]
-                    fig_opt.add_trace(go.Scatter3d(
-                        x=contact_points[:, 0],
-                        y=contact_points[:, 1], 
-                        z=contact_points[:, 2],
-                        mode='markers',
-                        marker=dict(color='red', size=3),
-                        name='Affordance Contact Points'
-                    ))
-            
-            # Add closest point and normal
-            representative_normal = contact_normal
-            normal_end = closest_point + representative_normal * 0.05
-            fig_opt.add_trace(go.Scatter3d(
-                x=[closest_point[0]],
-                y=[closest_point[1]],
-                z=[closest_point[2]],
-                mode='markers',
-                marker=dict(color='blue', size=8),
-                name='Closest Point'
-            ))
-            
-            fig_opt.add_trace(go.Scatter3d(
-                x=[closest_point[0], normal_end[0]],
-                y=[closest_point[1], normal_end[1]],
-                z=[closest_point[2], normal_end[2]],
-                mode='lines',
-                line=dict(color='orange', width=6),
-                name='Contact Normal'
-            ))
-            
-            # Add optimized contact points
-            opt_contact_points = self.hand_model.contact_points[0].detach().cpu().numpy()
-            fig_opt.add_trace(go.Scatter3d(
-                x=opt_contact_points[:, 0],
-                y=opt_contact_points[:, 1],
-                z=opt_contact_points[:, 2],
-                mode='markers',
-                marker=dict(color='yellow', size=6, symbol='diamond'),
-                name='Optimized Contact Points'
-            ))
+            surface_points = self.object_model.surface_points_tensor[0].cpu().numpy()
+            target_mask = self.object_model.affordance_target_masks[0].cpu().numpy()
+            if np.any(target_mask):
+                contact_points = surface_points[target_mask]
+                fig_opt.add_trace(go.Scatter3d(
+                    x=contact_points[:, 0],
+                    y=contact_points[:, 1], 
+                    z=contact_points[:, 2],
+                    mode='markers',
+                    marker=dict(color='red', size=3),
+                    name='Affordance Contact Points'
+                ))
             
             fig_opt.update_layout(
                 title=f"Step {step}: Optimized Affordance-Aligned Grasping - {object_code} Grasp {grasp_idx}",
@@ -275,7 +239,7 @@ class AffordanceAlignedOptimizer:
         print(f"Object: {object_code}, Grasp Index: {grasp_idx}")
         
         # Initialize models
-        self.initialize_models(object_code, mesh_data_path, data_path)
+        self.initialize_models(object_code, mesh_data_path, data_path, grasp_idx)
         
         # Extract contact normal from object model
         closest_point, contact_normal, closest_idx = extract_contact_normal(

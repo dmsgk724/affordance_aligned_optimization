@@ -49,7 +49,7 @@ class ObjectModel:
         self.affordance_non_target_masks = None
 
         self.scale_choice = torch.tensor([1],dtype=torch.float, device=self.device )
-    def initialize(self, object_code_list, affordance_data_path=None, contact_threshold=0.5):
+    def initialize(self, object_code_list, grasp_idx, affordance_data_path=None, contact_threshold=0.5):
         """
         Initialize Object Model with list of objects
         
@@ -72,7 +72,7 @@ class ObjectModel:
         self.object_face_verts_list = []
         self.point_cloud = np.load(affordance_data_path) 
         self.xyz = self.point_cloud [:, :3]
-        self.contact_maps = self.point_cloud[:, 3:].T
+        self.contact_maps = self.point_cloud[:, 3:].T[grasp_idx][np.newaxis, :]
         self.batch_size_each = self.contact_maps.shape[0]
         self.n_contact = self.batch_size_each
         self.surface_points_tensor = []
