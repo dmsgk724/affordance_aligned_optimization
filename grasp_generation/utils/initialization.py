@@ -1,8 +1,5 @@
 """
 Hand Initialization Utilities for Affordance-Aligned Grasping
-
-This module contains functions for initializing hand poses based on
-contact normals extracted from affordance maps.
 """
 
 import numpy as np
@@ -50,19 +47,12 @@ def extract_contact_normal(object_model, contact_threshold=0.5):
         contact_vals_i = contact_vals[i]
         contact_mask = contact_vals_i > contact_threshold
         
-        if np.sum(contact_mask) == 0:
-            # If no contact points found, use point with highest contact value
-            closest_idx = np.argmax(contact_vals_i)
-            print(f"Contact map {i}: No points above threshold, using max value point")
-        else:
-            contact_points = xyz[contact_mask]
-            mean_point = np.mean(contact_points, axis=0)
-            
-            # Find closest point to mean contact point
-            distances = np.linalg.norm(xyz - mean_point, axis=1)
-            closest_idx = np.argmin(distances)
-            print(f"Contact map {i}: Found {len(contact_points)} contact points")
+        contact_points = xyz[contact_mask]
+        mean_point = np.mean(contact_points, axis=0)
         
+        # Find closest point to mean contact point
+        distances = np.linalg.norm(xyz - mean_point, axis=1)
+        closest_idx = np.argmin(distances)
         representative_normal = normals[closest_idx]
         
         # Ensure normal points outward
@@ -72,9 +62,6 @@ def extract_contact_normal(object_model, contact_threshold=0.5):
         closest_points[i] = xyz[closest_idx]
         representative_normals[i] = representative_normal
         closest_indices[i] = closest_idx
-        
-    print(f"Representative normals shape: {representative_normals.shape}")
-    
     return closest_points, representative_normals, closest_indices
 
 
@@ -103,7 +90,6 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
     pose_idx = 0
     
     for i in range(n_objects):
-        # Create inflated convex hull
         mesh_origin = object_model.object_mesh_list[i].convex_hull
         vertices = mesh_origin.vertices.copy()
         faces = mesh_origin.faces
@@ -132,7 +118,6 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
                 extension_distance = 0.3
                 p_single = closest_point_torch + extension_distance * contact_normal_torch
             
-            # Replicate for 5000 poses
             p = p_single.unsqueeze(0).repeat(config.poses_per_contact, 1)
             n = -contact_normal_torch / contact_normal_torch.norm()
             n = n.view(1, 3).repeat(config.poses_per_contact, 1)
@@ -164,20 +149,7 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
             
             rotation_hand = torch.tensor(transforms3d.euler.euler2mat(0, -np.pi / 3, 0, axes='rzxz'), dtype=torch.float, device=device)
             rotation[start_idx:end_idx] = rotation_global @ rotation_local @ rotation_hand
-            
             pose_idx += config.poses_per_contact
-    
-    # Debug: Print total number of poses generated
-    print(f"=== POSE GENERATION DEBUG ===")
-    print(f"Number of objects: {n_objects}")
-    print(f"Number of contact normals: {n_contact_normals}")
-    print(f"Poses per normal: {config.poses_per_contact}")
-    print(f"Total batch size: {total_batch_size}")
-    print(f"Translation tensor shape: {translation.shape}")
-    print(f"Rotation tensor shape: {rotation.shape}")
-    print(f"Final pose_idx: {pose_idx}")
-    print(f"Expected total poses: {n_objects * n_contact_normals * config.poses_per_contact}")
-    print(f"============================")
     
     # Initialize joint angles
     joint_angles_mu = torch.tensor([0.1, 0, 0.6, 0, 0, 0, 0.6, 0, -0.1, 0, 0.6, 0, 0, -0.2, 0, 0.6, 0, 0, 1.2, 0, -0.2, 0], dtype=torch.float, device=device)
@@ -199,12 +171,3 @@ def initialize_hand_with_contact_normal(hand_model, object_model, closest_points
 
     contact_point_indices = torch.randint(hand_model.n_contact_candidates, size=[total_batch_size, config.n_contact], device=device)
     hand_model.set_parameters(hand_pose, contact_point_indices)
-    
-    print(f"=== FINAL INITIALIZATION DEBUG ===")
-    print(f"Hand pose tensor shape: {hand_pose.shape}")
-    print(f"Contact point indices shape: {contact_point_indices.shape}")
-    print(f"Joint angles tensor shape: {joint_angles.shape}")
-    print(f"Hand model batch size after initialization: {hand_model.hand_pose.shape[0] if hasattr(hand_model, 'hand_pose') else 'N/A'}")
-    print(f"Total grasp poses initialized: {total_batch_size}")
-    print(f"===================================")
-    print("Hand model initialized with pose and contact points!")

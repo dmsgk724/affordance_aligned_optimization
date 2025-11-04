@@ -8,3 +8,5 @@ wandb
 
 # Caches
 __pycache__
+*.ipynb
+results

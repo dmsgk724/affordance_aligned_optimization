@@ -11,6 +11,9 @@ This module implements the energy functions used in affordance-aligned grasp opt
 
 import torch
 import numpy as np
+import numpy as np
+import time 
+import numpy as np 
 import time 
 
 def compute_distance_energy(hand_model, object_model, d0=0.01):
@@ -80,13 +83,10 @@ def barrier_function(d, d_thr):
 
 
 
-def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.01):
+def compute_E_bar_affordance(hand_model, object_model, poses_num, d_thr=0.005):
     """
     Compute part-contact energy E_bar using affordance grounding contact map.
-    
     Contact points should be close to target regions and far from non-target regions.
-    For each 5000 poses, use different contact map's non_target_mask.
-    
     Args:
         hand_model: HandModel instance
         object_model: ObjectModel instance
@@ -246,7 +246,7 @@ def compute_hand_surface_normals(hand_model):
 
 def compute_E_dir(hand_model, object_model):
     """
-    Compute E_dir energy function for contact normal alignment.
+    Compute E_dir energy function for contact normal alignment using batch-wise operations.
     
     E_dir = sum over contact points of (1 - ci · Ni)
     where:
@@ -261,14 +261,13 @@ def compute_E_dir(hand_model, object_model):
         E_dir: (batch_size,) tensor of directional alignment energies
     """
     batch_size, n_contact, _ = hand_model.contact_points.shape
+    device = hand_model.device
     
     # Get object surface normals at contact points (ci)
-    # These point inward into the object
     _, object_contact_normals = object_model.cal_distance(hand_model.contact_points)
     object_contact_normals = object_contact_normals.reshape(batch_size, n_contact, 3)
     
     # Get hand surface normals at contact points (Ni)
-    # These should point outward from the hand (front side)
     hand_surface_normals = compute_hand_surface_normals(hand_model)
     
     # Compute cosine similarity for each contact point
@@ -333,69 +332,25 @@ def compute_total_energy_for_annealing(hand_model, object_model, config):
         E_bar: Barrier energy
         E_dir: Direction alignment energy
     """
-    timing_results = {}
-    
     # Distance Energy
-    start_time = time.time()
     E_dis = compute_distance_energy(hand_model, object_model, d0=0.01)
-    timing_results['E_dis'] = time.time() - start_time
     
     # Barrier Energy 
-    start_time = time.time()
     E_bar = compute_E_bar_affordance(
         hand_model, object_model,
         poses_num = config.poses_per_contact,
         d_thr=config.barrier_threshold
     )
-    timing_results['E_bar'] = time.time() - start_time
     
     # Force Closure Energy
-    start_time = time.time()
     E_fc = compute_force_closure_energy(hand_model, object_model)
-    timing_results['E_fc'] = time.time() - start_time
     
     # Direction Alignment Energy
-    start_time = time.time()
-    E_dir = compute_E_dir(hand_model, object_model)
-    timing_results['E_dir'] = time.time() - start_time
+    # E_dir = compute_E_dir(hand_model, object_model)
     
-    # Regularization Energies (measure individually)
-    start_time = time.time()
+    # Regularization Energies
     E_joints, E_pen, E_spen = compute_regularization_energies(hand_model, object_model)
-    reg_time = time.time() - start_time
     
-    # Break down regularization timing (approximate)
-    timing_results['E_joints'] = reg_time * 0.1  # Joint limits are fast
-    timing_results['E_pen'] = reg_time * 0.7     # Penetration is expensive (SDF)
-    timing_results['E_spen'] = reg_time * 0.2    # Self-penetration is moderate
-    
-    # Track total computation time
-    total_time = sum(timing_results.values())
-    timing_results['total'] = total_time
-    
-    # Print timing every N calls to avoid spam
-    if not hasattr(config, '_timing_call_count'):
-        config._timing_call_count = 0
-    config._timing_call_count += 1
-    
-    # Print timing info every 50 calls
-
-    print(f"\n=== Energy Timing Analysis (Call #{config._timing_call_count}) ===")
-    print(f"Batch size: {hand_model.contact_points.shape[0]}")
-    
-    # Sort by time (descending)
-    sorted_timings = sorted(timing_results.items(), key=lambda x: x[1], reverse=True)
-    
-    for name, time_ms in sorted_timings:
-        if name != 'total':
-            percentage = (time_ms / total_time) * 100
-            print(f"{name:12}: {time_ms*1000:6.2f}ms ({percentage:5.1f}%)")
-    
-    print(f"{'Total':12}: {total_time*1000:6.2f}ms")
-    print("=" * 50)
-
-    # Store timing in config for external access
-    config._last_timing = timing_results
     
     # Total energy (Equation 4)
     energy = (config.w_fc * E_fc + 
@@ -403,7 +358,8 @@ def compute_total_energy_for_annealing(hand_model, object_model, config):
              config.w_pen * E_pen + 
              config.w_spen * E_spen + 
              config.w_joints * E_joints + 
-             config.w_bar * E_bar + 
-             config.w_dir * E_dir)
+             config.w_bar * E_bar )
+             #  config.w_dir * E_dir)
     
-    return energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar, E_dir
+    # return energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar, E_dir
+    return energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar

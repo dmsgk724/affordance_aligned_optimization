@@ -19,12 +19,13 @@ import wandb
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import plotly.graph_objects as go
+import os
 
 # Import DexGraspNet modules
 from utils.hand_model import HandModel
 from utils.object_model import ObjectModel
 from utils.optimizer import Annealing
-from utils.initialization import extract_contact_normal, initialize_hand_with_contact_normal, load_affordance_data
+from utils.initialization import extract_contact_normal, initialize_hand_with_contact_normal
 from utils.affordance_energy import compute_total_energy_for_annealing
 
 
@@ -41,13 +42,12 @@ class AffordanceGraspConfig:
         self.n_contact = 4
         
         # Energy weights (following generate_grasps.py)
-        self.w_dis = 100.0      # Original distance weight
+        self.w_dis = 100.0   # Original distance weight
         self.w_pen = 100.0      # Penetration weight  
         self.w_spen = 10.0      # Self-penetration weight
-        self.w_joints = 1.0     # Joint limits weight
+        self.w_joints = 10.0     # Joint limits weight
         
-        self.w_bar = 1.0        # Barrier energy weight
-        self.w_dir = 10.0       # Direction alignment weight
+        self.w_bar = 100.0        # Barrier energy weight
         self.w_fc = 1.0         # Force closure weight
         
         # Annealing parameters (same as generate_grasps.py)
@@ -61,7 +61,8 @@ class AffordanceGraspConfig:
         
         # Affordance parameters
         self.contact_threshold = 0.5  # Threshold for contact map
-        self.barrier_threshold = 0.02  # d_thr for barrier function
+        self.barrier_threshold = 0.05  # d_thr for barrier function
+        self.poses_per_contact = 1
 
 
 class AffordanceAlignedOptimizer:
@@ -74,7 +75,7 @@ class AffordanceAlignedOptimizer:
         self.object_model = None
         self.use_wandb = use_wandb
         
-    def initialize_models(self, object_code, data_root_path):
+    def initialize_models(self, object_code, data_root_path, data_path):
         """Initialize hand and object models"""
         print("Initializing models...")
         
@@ -87,18 +88,19 @@ class AffordanceAlignedOptimizer:
             device=self.device
         )
         
-        # Initialize object model
+        # Initialize object model with batch_size=1 for single optimization
         self.object_model = ObjectModel(
             data_root_path=data_root_path,
-            batch_size_each=1,
+            batch_size_each=5,
             num_samples=2000,
             device=self.device
         )
+            
+        # Initialize with affordance data
+        self.object_model.initialize([object_code], affordance_data_path=data_path, contact_threshold=self.config.contact_threshold)
+        print("Models initialized successfully")
         
-        self.object_model.initialize([object_code])
-        print("Models initialized successfully!")
-        
-    def optimize_grasp_annealing(self, xyz, contact_vals, num_steps=6000, verbose_step=100, output_dir=None, object_code=None, grasp_idx=None, closest_point=None, contact_normal=None, closest_idx=None):
+    def optimize_grasp_annealing(self, num_steps=6000, verbose_step=100, output_dir=None, object_code=None, grasp_idx=None, closest_point=None, contact_normal=None, closest_idx=None):
         """Optimize grasp using Annealing optimizer"""
         
         # Store initial pose
@@ -123,8 +125,8 @@ class AffordanceAlignedOptimizer:
         print(f"Annealing Config: temp={self.config.starting_temperature}, decay={self.config.temperature_decay}")
         
         # Initial energy computation
-        energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar, E_dir = compute_total_energy_for_annealing(
-            self.hand_model, self.object_model, xyz, contact_vals, self.config
+        energy, E_fc, E_dis, E_pen, E_spen, E_joints, E_bar = compute_total_energy_for_annealing(
+            self.hand_model, self.object_model, self.config
         )
         
         print(f"Initial Total Energy: {energy.sum().item():.6f}")
@@ -133,17 +135,16 @@ class AffordanceAlignedOptimizer:
         energy.sum().backward(retain_graph=True)
         
         for step in range(1, num_steps + 1):
-            # Try step (annealing)
             s = optimizer.try_step()
             
             # Zero gradients
             optimizer.zero_grad()
             
             # Compute new energy
-            new_energy, new_E_fc, new_E_dis, new_E_pen, new_E_spen, new_E_joints, new_E_bar, new_E_dir = compute_total_energy_for_annealing(
-                self.hand_model, self.object_model, xyz, contact_vals, self.config
+            new_energy, new_E_fc, new_E_dis, new_E_pen, new_E_spen, new_E_joints, new_E_bar = compute_total_energy_for_annealing(
+                self.hand_model, self.object_model, self.config
             )
-            
+
             # Backward pass
             new_energy.sum().backward(retain_graph=True)
             
@@ -159,8 +160,6 @@ class AffordanceAlignedOptimizer:
                 E_spen[accept] = new_E_spen[accept]
                 E_joints[accept] = new_E_joints[accept]
                 E_bar[accept] = new_E_bar[accept]
-                E_dir[accept] = new_E_dir[accept]
-            
             
             # Wandb logging
             if self.use_wandb:
@@ -173,7 +172,6 @@ class AffordanceAlignedOptimizer:
                     'energy/self_penetration': E_spen.mean().item(),
                     'energy/joints': E_joints.mean().item(),
                     'energy/barrier': E_bar.mean().item(),
-                    'energy/direction': E_dir.mean().item(),
                     'optimization/temperature': temperature.item(),
                     'optimization/step_size': s.item(),
                     'optimization/acceptance_rate': accept.float().mean().item()
@@ -191,7 +189,7 @@ class AffordanceAlignedOptimizer:
                 # Save intermediate visualization if output directory is provided
                 if output_dir is not None and object_code is not None and grasp_idx is not None:
                     self.save_intermediate_visualization(
-                        step, xyz, contact_vals, closest_point, contact_normal, closest_idx,
+                        step, closest_point, contact_normal, closest_idx,
                         output_dir, object_code, grasp_idx
                     )
         
@@ -199,9 +197,11 @@ class AffordanceAlignedOptimizer:
         print(f"Final Total Energy: {energy.sum().item():.6f}")
         print(f"Final Temperature: {temperature.item():.6f}")
         
+        # Store final energy for result saving
+        self.final_energy = energy[0].item()
         return self.hand_model.hand_pose.clone()
         
-    def save_intermediate_visualization(self, step, xyz, contact_vals, closest_point, contact_normal, closest_idx, output_dir, object_code, grasp_idx):
+    def save_intermediate_visualization(self, step, closest_point, contact_normal, closest_idx, output_dir, object_code, grasp_idx):
         """Save intermediate hand pose visualization at verbose steps using plotly with HTML output"""
         try:
             # Get hand and object plotly data
@@ -211,19 +211,20 @@ class AffordanceAlignedOptimizer:
             # Create figure with hand and object data
             fig_opt = go.Figure(hand_plotly_opt + object_plotly_opt)
             
-            # Add contact points from affordance map
-            contact_threshold = self.config.contact_threshold
-            high_contact_mask = contact_vals > contact_threshold
-            if np.any(high_contact_mask):
-                contact_points = xyz[high_contact_mask]
-                fig_opt.add_trace(go.Scatter3d(
-                    x=contact_points[:, 0],
-                    y=contact_points[:, 1], 
-                    z=contact_points[:, 2],
-                    mode='markers',
-                    marker=dict(color='red', size=3),
-                    name='Affordance Contact Points'
-                ))
+            # Add contact points from affordance map (get from object model)
+            if hasattr(self.object_model, 'surface_points_tensor') and hasattr(self.object_model, 'affordance_target_masks'):
+                surface_points = self.object_model.surface_points_tensor[0].cpu().numpy()
+                target_mask = self.object_model.affordance_target_masks[0].cpu().numpy()
+                if np.any(target_mask):
+                    contact_points = surface_points[target_mask]
+                    fig_opt.add_trace(go.Scatter3d(
+                        x=contact_points[:, 0],
+                        y=contact_points[:, 1], 
+                        z=contact_points[:, 2],
+                        mode='markers',
+                        marker=dict(color='red', size=3),
+                        name='Affordance Contact Points'
+                    ))
             
             # Add closest point and normal
             representative_normal = contact_normal
@@ -265,16 +266,10 @@ class AffordanceAlignedOptimizer:
                 height=600
             )
             
-            # Save as HTML file
             png_path = output_dir / f"{object_code}_grasp_{grasp_idx}_step_{step:04d}.png"
             fig_opt.write_image(png_path)
-            
             print(f"Intermediate visualization saved: {png_path}")
-            
-            # Log to wandb if enabled
-            if self.use_wandb:
-                wandb.log({f"visualization/step_{step}": wandb.Html(str(png_path))})
-                
+
         except Exception as e:
             print(f"Visualization failed at step {step}: {e}")
             import traceback
@@ -283,18 +278,17 @@ class AffordanceAlignedOptimizer:
             
     def run_pipeline(self, object_code, data_path, mesh_data_path, grasp_idx=0, 
                     num_steps=6000, output_dir=None):
-        """Run complete affordance-aligned optimization pipeline"""
+
         print(f"=== Affordance-Aligned Grasping Pipeline ===")
         print(f"Object: {object_code}, Grasp Index: {grasp_idx}")
         
         # Initialize models
-        self.initialize_models(object_code, mesh_data_path)
+        self.initialize_models(object_code, mesh_data_path, data_path)
         
-        # Load affordance data
-        xyz, contact_vals = load_affordance_data(data_path, grasp_idx)
-        
-        # Extract contact normal
-        closest_point, contact_normal, closest_idx = extract_contact_normal(xyz, contact_vals, self.config.contact_threshold)
+        # Extract contact normal from object model
+        closest_point, contact_normal, closest_idx = extract_contact_normal(
+            self.object_model, self.config.contact_threshold
+        )
         
         # Initialize hand with contact normal
         initialize_hand_with_contact_normal(self.hand_model, self.object_model, closest_point, contact_normal, self.config)
@@ -308,7 +302,6 @@ class AffordanceAlignedOptimizer:
         
         # Run optimization with intermediate visualization saving
         optimized_pose = self.optimize_grasp_annealing(
-            xyz, contact_vals, 
             num_steps=num_steps,
             output_dir=viz_output_dir,
             object_code=object_code,
@@ -320,10 +313,9 @@ class AffordanceAlignedOptimizer:
         
         return {
             'optimized_pose': optimized_pose,
-            'xyz': xyz,
-            'contact_vals': contact_vals,
             'closest_point': closest_point,
-            'contact_normal': contact_normal
+            'contact_normal': contact_normal,
+            'final_energy': self.final_energy if hasattr(self, 'final_energy') else None
         }
 
 
@@ -346,15 +338,6 @@ def main():
     parser.add_argument('--device', type=str, default='cuda',
                        help='Device to use (cuda/cpu)')
     
-    # Energy weight arguments
-    parser.add_argument('--w_dis', type=float, default=100.0,
-                       help='Distance energy weight')
-    parser.add_argument('--w_bar', type=float, default=1.0,
-                       help='Barrier energy weight')
-    parser.add_argument('--w_dir', type=float, default=10.0,
-                       help='Direction alignment energy weight')
-    parser.add_argument('--w_fc', type=float, default=1.0,
-                       help='Force closure energy weight')
     parser.add_argument('--wandb_project', type=str, default='affordance-aligned-grasping',
                        help='Wandb project name')
     parser.add_argument('--wandb_run_name', type=str, default=None,
@@ -366,37 +349,19 @@ def main():
     
     # Format data path with object code
     data_path = args.data_path.format(object_code=args.object_code)
-    
-    # Initialize wandb if enabled
+
+
     use_wandb = not args.no_wandb
-    if use_wandb:
+    if not args.no_wandb:
         run_name = args.wandb_run_name or f"{args.object_code}_grasp_{args.grasp_idx}"
         wandb.init(
             project=args.wandb_project,
-            name=run_name,
-            config={
-                'object_code': args.object_code,
-                'grasp_idx': args.grasp_idx,
-                'num_steps': args.num_steps,
-                'device': args.device,
-                'w_dis': args.w_dis,
-                'w_bar': args.w_bar,
-                'w_dir': args.w_dir,
-                'w_fc': args.w_fc,
-                'data_path': data_path,
-                'mesh_data_path': args.mesh_data_path
-            }
+            name=run_name
         )
         print(f"Wandb initialized: project={args.wandb_project}, run={run_name}")
     
     # Create configuration
     config = AffordanceGraspConfig()
-    config.w_dis = args.w_dis
-    config.w_bar = args.w_bar
-    config.w_dir = args.w_dir
-    config.w_fc = args.w_fc
-    
-    # Initialize optimizer
     optimizer = AffordanceAlignedOptimizer(config, device=args.device, use_wandb=use_wandb)
     
     # Run pipeline

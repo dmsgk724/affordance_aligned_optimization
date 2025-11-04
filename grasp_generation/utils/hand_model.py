@@ -150,8 +150,6 @@ class HandModel:
         self.global_index_to_link_index_penetration = torch.tensor(self.global_index_to_link_index_penetration, dtype=torch.long, device=device)
         self.n_keypoints = self.penetration_keypoints.shape[0]
 
-        # parameters
-
         self.hand_pose = None
         self.contact_point_indices = None
         self.global_translation = None
@@ -203,14 +201,6 @@ class HandModel:
         x: (B, N, 3) torch.Tensor
             point clouds sampled from object surface
         """
-        # Consider each link seperately: 
-        #   First, transform x into each link's local reference frame using inversed fk, which gives us x_local
-        #   Next, calculate point-to-mesh distances in each link's frame, this gives dis_local
-        #   Finally, the maximum over all links is the final distance from one point to the entire ariticulation
-        # In particular, the collision mesh of ShadowHand is only composed of Capsules and Boxes
-        # We use analytical method to calculate Capsule sdf, and use our modified Kaolin package for other meshes
-        # This practice speeds up the reverse penetration calculation
-        # Note that we use a chamfer box instead of a primitive box to get more accurate signs
         dis = []
         x = (x - self.global_translation.unsqueeze(1)) @ self.global_rotation
         for link_name in self.mesh:
@@ -363,56 +353,3 @@ class HandModel:
             data.append(go.Scatter3d(x=contact_points[:, 0], y=contact_points[:, 1], z=contact_points[:, 2], mode='markers', marker=dict(color='red', size=5)))
         return data
     
-    def get_sampled_contact_indices(hand_model, link_names, n_points_per_link=1):
-        """
-        각 link에서 n개의 contact point만 샘플링
-        
-        Parameters
-        ----------
-        hand_model: HandModel
-        link_names: list of str
-            링크 이름 리스트
-        n_points_per_link: int or dict
-            각 링크당 선택할 점의 개수
-            int면 모든 링크에 동일하게 적용
-            dict면 {link_name: n_points} 형태
-        
-        Returns
-        -------
-        indices: torch.LongTensor
-            선택된 contact candidate 인덱스들
-        """
-        all_indices = []
-        
-        for link_name in link_names:
-            if link_name not in hand_model.link_name_to_link_index:
-                continue
-                
-            # 해당 link의 모든 인덱스 가져오기
-            link_idx = hand_model.link_name_to_link_index[link_name]
-            mask = hand_model.global_index_to_link_index == link_idx
-            link_indices = torch.where(mask)[0]
-            
-            # n_points 결정
-            if isinstance(n_points_per_link, dict):
-                n_points = n_points_per_link.get(link_name, 1)
-            else:
-                n_points = n_points_per_link
-            
-            # 샘플링
-            n_available = len(link_indices)
-            if n_available == 0:
-                continue
-                
-            if n_points >= n_available:
-                # 모든 점 사용
-                selected = link_indices
-            else:
-                # 랜덤 샘플링 또는 첫 n개 선택
-                # 랜덤: selected = link_indices[torch.randperm(n_available)[:n_points]]
-                # 첫 n개: 
-                selected = link_indices[:n_points]
-            
-            all_indices.append(selected)
-        
-        return torch.cat(all_indices) if all_indices else torch.tensor([], dtype=torch.long, device=hand_model.device)

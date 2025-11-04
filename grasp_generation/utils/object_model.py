@@ -97,8 +97,7 @@ class ObjectModel:
     def _load_affordance_data(self, data_path, contact_threshold=0.5, distance_threshold=0.005):
         """
         Load point cloud and contact map from processed DexGYS dataset
-        
-        Parameters
+
         ----------
         data_path: str
             path to .npy file containing point cloud and contact maps
@@ -142,13 +141,9 @@ class ObjectModel:
                 surface_target_masks[i] = min_distances < distance_threshold
             
             n_target = surface_target_masks[i].sum().item()
-            print(f"Contact map {i}: {n_target}/{n_surface} target surface points ({n_target/n_surface:.2%})")
-        
+
         self.affordance_target_masks = surface_target_masks  # (5, num_samples)
         self.affordance_non_target_masks = ~surface_target_masks  # (5, num_samples)
-        
-        # Visualize surface points and contact maps
-        # self._visualize_affordance_mapping(surface_points, ~surface_target_masks, data_path)
     
     def _visualize_affordance_mapping(self, surface_points, surface_target_masks, data_path):
         """
